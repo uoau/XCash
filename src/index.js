@@ -1,7 +1,7 @@
 import Vue from 'vue';
-import allMine from '../../all-mine/packages/index';
+import allMine from 'all-mine';
 import App from './index.vue';
-// import '../../all-mine/packages/stylesheet/index.css';
+import 'all-mine/lib/index.css';
 
 Vue.use(allMine);
 

@@ -8,7 +8,7 @@
     "build": "webpack --config ./build/webpack.prod.js"
   },
   "dependencies": {
-    "all-mine": "^1.1.0",
+    "all-mine": "^1.1.1",
     "dayjs": "^1.8.34",
     "lodash": "^4.17.20",
     "nanoid": "^3.1.20",

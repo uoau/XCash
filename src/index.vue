@@ -609,6 +609,9 @@ export default {
 }
 
 // 组件样式
+.am-button {
+    border-radius: 3px;
+}
 .am-select {
     &__box {
         border-radius: 3px;
