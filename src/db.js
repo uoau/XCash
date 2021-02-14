@@ -155,7 +155,7 @@ export const getCashItems = async (params) => {
     getOptions.query = {
         date: {},
     };
-    if (type) {
+    if (type !== '') {
         getOptions.query.type = type;
     }
     if (category) {
@@ -182,8 +182,12 @@ export const getCashItems = async (params) => {
 // 分类增改查
 export const postCategory = async ({
     name,
+    id,
+    type,
 }) => {
     await db.add('category', {
+        id,
+        type,
         name,
     });
 };

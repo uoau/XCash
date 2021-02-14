@@ -10,7 +10,7 @@
             <div class="m-control">
                 <div class="m-control__left">
                     <div class="year">
-                        <AmSelect v-model="filter.year">
+                        <AmSelect v-model="filter.year" @change="selDateChange">
                             <AmOption
                                 v-for="item in yearOptions"
                                 :key="item.value"
@@ -21,7 +21,7 @@
                         </AmSelect>
                     </div>
                     <div class="month">
-                        <AmSelect v-model="filter.month">
+                        <AmSelect v-model="filter.month" @change="selDateChange">
                             <AmOption
                                 v-for="item in monthOptions"
                                 :key="item.value"
@@ -78,15 +78,6 @@
                             icon-name="add"
                             @click="() => { categoryDialog.show = true; }"
                         />
-                        <span>导入CSV</span>
-                    </div>
-                    <!-- 添加分类 -->
-                    <div class="btn">
-                        <AmIconButton
-                            shape="square"
-                            icon-name="add"
-                            @click="() => { categoryDialog.show = true; }"
-                        />
                         <span>加分类</span>
                     </div>
                     <!-- 添加收支 -->
@@ -96,7 +87,7 @@
                             icon-name="add"
                             @click="() => { cashItemDialog.show = true }"
                         />
-                        <span>加收支</span>
+                        <span>写账单</span>
                     </div>
                 </div>
             </div>
@@ -130,21 +121,16 @@
                             {{ row.categoryText }}
                         </template>
                     </AmTableColumn>
-                    <AmTableColumn label="金额" width="110px" prop="price" sort>
+                    <AmTableColumn label="金额(元)" width="110px" prop="price" sort>
                         <template #default="row">
                             <div
                                 class="m-price"
                                 :style="{
-                                    color: row.type === '1'?'var(--green)': 'var(--red)'
+                                    color: row.type === 1?'var(--green)': 'var(--red)'
                                 }"
                             >
-                                {{ row.type === '1' ? '+': '-' }}{{ row.price }}
+                                {{ row.type === 1 ? '+': '-' }}{{ row.price }}
                             </div>
-                        </template>
-                    </AmTableColumn>
-                    <AmTableColumn label="备注" width="120px">
-                        <template #default="row">
-                            {{ row.remark }}
                         </template>
                     </AmTableColumn>
                 </AmTable>
@@ -180,8 +166,16 @@
         >
             <template #default>
                 <AmForm position="right" label-width="80px">
-                    <AmFormItem label="分类：">
+                    <AmFormItem label="分类名：" required>
                         <AmInput v-model="categoryDialog.name" placeholder="请输入分类名称" />
+                    </AmFormItem>
+                    <AmFormItem label="类型：" required>
+                        <AmRadio
+                            v-for="item in typeOptions"
+                            :key="item.value"
+                            v-model="categoryDialog.type"
+                            :label="item.value"
+                        >{{ item.label }}</AmRadio>
                     </AmFormItem>
                 </AmForm>
             </template>
@@ -203,19 +197,11 @@
         >
             <template #default>
                 <AmForm position="right" label-width="80px">
-                    <AmFormItem label="日期：">
+                    <AmFormItem label="日期：" required>
                         <AmDatePicker type="day" v-model="cashItemDialog.date"/>
                     </AmFormItem>
-                    <AmFormItem label="类型：">
-                        <AmRadio
-                            v-for="item in typeOptions"
-                            :key="item.value"
-                            v-model="cashItemDialog.type"
-                            :label="item.value"
-                        >{{ item.label }}</AmRadio>
-                    </AmFormItem>
-                    <AmFormItem label="类目：">
-                        <AmSelect v-model="cashItemDialog.category">
+                    <AmFormItem label="类目：" required>
+                        <AmSelect v-model="cashItemDialog.category" @change="categoryChange">
                             <AmOption
                                 v-for="item in categoryOptions"
                                 :key="item.value"
@@ -225,11 +211,16 @@
                             </AmOption>
                         </AmSelect>
                     </AmFormItem>
-                    <AmFormItem label="金额：">
-                        <AmInput v-model="cashItemDialog.price" :match="/^\d+(\.\d{1,2})?$|^$/"/>
+                    <AmFormItem label="类型：">
+                        <AmRadio
+                            v-for="item in typeOptions"
+                            :key="item.value"
+                            v-model="cashItemDialog.type"
+                            :label="item.value"
+                        >{{ item.label }}</AmRadio>
                     </AmFormItem>
-                    <AmFormItem label="备注：">
-                        <AmTextarea v-model="cashItemDialog.remark" />
+                    <AmFormItem label="金额：" required>
+                        <AmInput v-model="cashItemDialog.price" :match="/^\d+(\.\d{1,2})?$|^$/"/>
                     </AmFormItem>
                 </AmForm>
             </template>
@@ -248,19 +239,11 @@
 <script>
 import dayjs from 'dayjs';
 import papaparse from 'papaparse';
+import { nanoid } from 'nanoid';
 import { YEAR_MAP, MONTH_MAP, TYPE_MAP } from './constants';
 import {
     connectDb, postCashItem, getCashItems, postCategory, getCategory,
 } from './db';
-
-papaparse.parse('http://example.com/file.csv', {
-    download: true,
-    complete(results) {
-        console.log(results);
-    },
-});
-
-console.log(papaparse);
 
 export default {
     data() {
@@ -272,8 +255,8 @@ export default {
             categoryOptions: [],
             // 筛选项
             filter: {
-                year: dayjs().$y,
-                month: dayjs().$M,
+                year: 2019,
+                month: 11,
                 nowType: '',
                 nowCategory: '',
                 sort: '',
@@ -285,12 +268,13 @@ export default {
             categoryDialog: {
                 show: false,
                 name: '',
+                type: 1,
             },
             // 新增收支弹窗
             cashItemDialog: {
                 show: false,
                 date: new Date(),
-                type: '1',
+                type: 1,
                 category: '',
                 price: '',
                 remark: '',
@@ -302,7 +286,7 @@ export default {
             let imcome = 0;
             let expense = 0;
             this.list.forEach((i) => {
-                if (i.type === '1') {
+                if (i.type === 1) {
                     imcome += +i.price;
                 } else {
                     expense += +i.price;
@@ -362,67 +346,124 @@ export default {
     async created() {
         // 连接数据库
         await connectDb();
+        // 加载出题者提供的初始数据
+        await this.initCSVDate();
+        // 设置初始选择日期
+        const year = localStorage.getItem('year');
+        const month = localStorage.getItem('month');
+        if (year) this.filter.year = +year;
+        if (month) this.filter.month = +month;
         // 获取分类
         await this.getCategory();
-        //
+        // 获取列表
         await this.getList();
     },
     methods: {
         async getCategory() {
             const res = await getCategory();
             this.categoryOptions = res.map((i) => ({
-                value: i.key,
+                value: i.id,
                 label: i.name,
+                type: i.type,
             }));
             this.cashItemDialog.category = this.categoryOptions[0].value;
         },
         async getList() {
             const res = await getCashItems(this.fetchListParams);
-            console.log('res', res);
-            this.list = res.map((item) => ({
-                ...item,
-                typeText: this.typeOptions.find((i) => i.value === item.type)?.label,
-                categoryText: this.categoryOptions.find((i) => i.value === item.category)?.label,
-            }));
+            this.list = res.map((item) => {
+                const type = item.type
+                    || this.categoryOptions.find((i) => i.value === item.category)?.type;
+                return {
+                    ...item,
+                    type,
+                    typeText: this.typeOptions.find((i) => i.value === type)?.label,
+                    categoryText:
+                        this.categoryOptions.find((i) => i.value === item.category)?.label,
+                };
+            });
         },
         tableSortChange(sort) {
             console.log(sort, '点击排序');
             this.filter.sort = sort.prop;
             this.filter.order = sort.order;
         },
-        addCategory() {
+        async addCategory() {
             if (!this.categoryDialog.name) {
                 this.$message.fail('请输入分类名');
                 return;
             }
-            const res = postCategory({
+            await postCategory({
+                id: nanoid(10),
                 name: this.categoryDialog.name,
             });
-            console.log(res);
             this.$message.success('创建分类成功');
             this.categoryDialog.show = false;
             this.getCategory();
         },
-        addCashItem() {
+        async addCashItem() {
             const {
-                type, category, price, remark,
+                type, category, price,
             } = this.cashItemDialog;
             const date = dayjs(this.cashItemDialog.date).valueOf();
-            if (!price) {
-                this.$message.fail('请输入价格');
-                return;
-            }
-            const res = postCashItem({
+            await postCashItem({
                 date,
                 type,
                 category,
                 price,
-                remark,
             });
-            console.log(res);
+            this.$message.success('创建账单成功');
             this.cashItemDialog.show = false;
+            this.getList();
+        },
+        categoryChange() {
+            // eslint-disable-next-line max-len
+            const type = this.categoryOptions.find((i) => i.value === this.cashItemDialog.category)?.type;
+            this.cashItemDialog.type = type;
+        },
+        selDateChange() {
+            localStorage.setItem('year', this.filter.year);
+            localStorage.setItem('month', this.filter.month);
         },
 
+        // 导入作业基础数据
+        importOnlineCSV(url) {
+            return new Promise((resolve) => {
+                papaparse.parse(url, {
+                    download: true,
+                    header: true,
+                    complete(results) {
+                        resolve(results.data);
+                    },
+                });
+            });
+        },
+        async initCSVDate() {
+            const imported = localStorage.getItem('IMPORTED');
+            if (imported && imported === '1') {
+                return;
+            }
+            // 加载分类数据
+            const res = await this.importOnlineCSV('https://hlgcdn.oss-cn-hangzhou.aliyuncs.com/hlg-ui/1612961609036266/categories.csv');
+            res.forEach(async (c) => {
+                await postCategory({
+                    id: c.id,
+                    type: +c.type,
+                    name: c.name,
+                });
+            });
+            // 导入账单数据
+            const res2 = await this.importOnlineCSV('https://hlgcdn.oss-cn-hangzhou.aliyuncs.com/hlg-ui/1612961809304254/bill.csv');
+            res2.forEach(async (b) => {
+                await postCashItem({
+                    date: +b.time,
+                    type: +b.type,
+                    category: b.category,
+                    price: +Math.abs(b.amount),
+                });
+            });
+            // 是否导入
+            localStorage.setItem('IMPORTED', '1');
+        },
     },
 };
 </script>

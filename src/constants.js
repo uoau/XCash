@@ -1,19 +1,19 @@
 // 收支类型
 export const TYPE_MAP = [
     {
-        value: '1',
+        value: 1,
         label: '收入',
     },
     {
-        value: '2',
+        value: 0,
         label: '支出',
     },
 ];
 
 //  年份
 export const YEAR_MAP = '1'.repeat(10).split('1').map((item, index) => ({
-    value: 2020 + index,
-    label: `${2020 + index}年`,
+    value: 2018 + index,
+    label: `${2018 + index}年`,
 }));
 
 // 月份
