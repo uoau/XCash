@@ -1,1 +1,1 @@
-在线demo：https://uoau.github.io/XCash/ (需科学上网)
+在线demo：https://uoau.github.io/XCash/ (如果连不上，试试科学上网)
